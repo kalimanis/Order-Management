@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Manager</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+	<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <style>
+        table tbody tr {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<div class="container mt-5">
+    <form method="post">
+		<!-- Add this button within your form or container div -->
+		<div class="row">
+			<div class="col-9">
+				<button id="runScriptButton" class="btn btn-primary btn-block mt-3">Εκτύπωση Voucher</button>
+			</div>
+			<div class="col-3">
+				<button id="refreshPageButton" class="btn btn-secondary btn-block mt-3" onclick="location.reload();">Ανανέωση</button>
+			</div>
+		</div>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Order ID</th>
+						<th>Ημ/νια</th>
+						<th>Τρόπος πληρωμής</th>
+                        <th>Πελάτης</th>
+                        <th>Κατάσταση</th>
+                        <th>Σύνολο</th>
+                        <th>Αριθμός ACS</th>
+                        <th>Κατάσταση παράδοσης</th>
+						<th>Ενέργεια</th>
+                    </tr>
+                </thead>
+				<tbody>
+					{% for order in orders %}
+					<tr>
+						<td onclick="event.stopPropagation();"><input type="checkbox" name="order_checkbox" value="{{ order.id }}"></td>
+						<td data-toggle="modal" data-target="#orderModal{{ order.id }}">{{ order.id }}</td>
+						<td data-toggle="modal" data-target="#orderModal{{ order.id }}">{{ order.date_created[8:10] }}/{{ order.date_created[5:7] }}/{{ order.date_created[:4] }}</td>
+						<td data-toggle="modal" data-target="#orderModal{{ order.id }}">{{ order.payment_method_title }}</td>
+						<td data-toggle="modal" data-target="#orderModal{{ order.id }}">{{ order.billing.first_name }} {{ order.billing.last_name }}</td>
+						<td data-toggle="modal" data-target="#orderModal{{ order.id }}">{{ order.status }}</td>
+						<td data-toggle="modal" data-target="#orderModal{{ order.id }}">{{ order.total }}</td>
+						<td data-toggle="modal" data-target="#orderModal{{ order.id }}">{{ get_tracking_info(order) }}</td>
+						<td data-toggle="modal" data-target="#orderModal{{ order.id }}">{{ get_voucher_delivery_status(order) }}</td>
+						<td>
+							{% if order.status in ['processing', 'on-hold'] %}
+							<form action="{{ url_for('update_order_status', order_id=order.id) }}" method="post" class="d-inline">
+								<button type="button" class="btn btn-sm btn-success" onclick="completeOrder({{ order.id }})">Ολοκλήρωση</button>
+							</form>
+							{% endif %}
+						</td>
+					</tr>
+					{% endfor %}
+				</tbody>
+            </table>
+        </div>
+
+        <div class="form-group">
+            <label for="status">Αλλαγή κατάστασης:</label>
+            <select name="status" id="status" class="form-control">
+                <option value="completed">Ολοκληρωμένη</option>
+                <option value="processing">Σε επεξεργασία</option>
+                <option value="on-hold">Σε αναμονή</option>
+                <option value="cancelled">Ακυρωμένη</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Ενημέρωση κατάστασης</button>
+        <div class="mt-3">
+            <ul class="pagination justify-content-center">
+                <li class="page-item {% if page == 1 %} disabled {% endif %}">
+                    <a class="page-link" href="{{ url_for('index', page=page-1) }}">Προηγούμενη</a>
+                </li>
+                {% for p in range(1, (total_orders // per_page) + 2) %}
+                <li class="page-item {% if p == page %} active {% endif %}">
+                    <a class="page-link" href="{{ url_for('index', page=p) }}">{{ p }}</a>
+                </li>
+                {% endfor %}
+                <li class="page-item {% if page >= (total_orders // per_page) %} disabled {% endif %}">
+                    <a class="page-link" href="{{ url_for('index', page=page+1) }}">Επόμενη</a>
+                </li>
+            </ul>
+        </div>
+
+    </form>
+</div>
+
+<!-- Modals for each order -->
+{% for order in orders %}
+<div class="modal fade" id="orderModal{{ order.id }}" tabindex="-1" role="dialog" aria-labelledby="orderModalLabel{{ order.id }}" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="orderModalLabel{{ order.id }}">Παραγγελία</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <strong>Πελάτης:</strong> {{ order.billing.first_name }} {{ order.billing.last_name }}<br>
+                <strong>Διεύθυνση:</strong> 
+                {{ order.billing.address_1 }}, {{ order.billing.address_2 }}, {{ order.billing.city }}, {{ order.billing.postcode }}, {{ order.billing.country }}<br>
+                <strong>Προϊόντα:</strong>
+                <ul>
+                    {% for item in order.line_items %}
+                    <li>{{ item.name }} (Quantity: {{ item.quantity }})</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-success" onclick="completeOrder({{ order.id }})">Ολοκλήρωση</button>
+                <!-- Added close button on the right -->
+                <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Required scripts for Bootstrap Modals -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<!-- Add this script at the end of your HTML body -->
+<script>
+document.getElementById("runScriptButton").addEventListener("click", function() {
+    // Send an AJAX request to execute the Python script
+    fetch("/run_script", {
+        method: "POST",
+    })
+    .then(response => response.text())
+    .then(data => {
+        // Handle the response from the server (if needed)
+        console.log(data);
+    })
+    .catch(error => {
+        console.error("Error:", error);
+    });
+});
+</script>
+<script>
+function completeOrder(orderId) {
+    fetch(`/update_order_status/${orderId}`, {
+        method: "POST"
+    })
+    .then(response => {
+        if (response.ok) {
+            location.reload();
+        }
+    });
+}
+</script>
+</body>
+</html>
