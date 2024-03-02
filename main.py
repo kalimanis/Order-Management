@@ -100,7 +100,7 @@ def update_order_status(order_id):
 
 # 7. Define the get_api_credentials function.
 def get_api_credentials():
-    with open('api_credentials_kfurs.json') as f:
+    with open('api_credentials.json') as f:
         credentials = json.load(f)
     return credentials['url'], credentials['consumer_key'], credentials['consumer_secret']
 
