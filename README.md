@@ -1,5 +1,5 @@
 
-# Order Manager Application
+# Woo Order Manager Application
 
 👋 Welcome to the README for the Order Manager application. This document will guide you through the setup, usage, and understanding of this Flask-based web application designed for managing WooCommerce orders.
 
