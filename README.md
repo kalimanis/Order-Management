@@ -1,6 +1,6 @@
 <div class="container mt-5">
 
-# Order Management System
+# Woo Order Management System
 
 👋 Welcome to the comprehensive README for the Order Management System. This document provides all necessary information for setting up, understanding, and using the application.
 
